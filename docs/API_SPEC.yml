@@ -1,0 +1,456 @@
+openapi: 3.0.3
+info:
+  title: MindTrack API
+  description: |
+    成為領先的個人化洞察平台，賦予使用者探索「行為」與「心境」之間深層連結的能力，
+    將自我覺察從模糊的感受轉化為清晰的行動指南，最終幫助他們構建更健康、更有意義的生活。
+  version: 1.0.0
+servers:
+  - url: https://api.mindtrack.app/api/v1
+    description: Production Server
+  - url: http://localhost:5000/api/v1
+    description: Local Development Server
+
+paths:
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCredentials'
+            example:
+              email: "test.user@example.com"
+              password: "a-very-strong-password"
+      responses:
+        '201':
+          description: User successfully registered and token returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Log in a user
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCredentials'
+            example:
+              email: "test.user@example.com"
+              password: "a-very-strong-password"
+      responses:
+        '200':
+          description: User successfully logged in and token returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthToken'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /habits:
+    get:
+      tags:
+        - Habits
+      summary: List user's habits
+      operationId: listHabits
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QueryLimit'
+        - $ref: '#/components/parameters/QueryOffset'
+      responses:
+        '200':
+          description: A list of habits.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Habit'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags:
+        - Habits
+      summary: Create a new habit
+      operationId: createHabit
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitInput'
+            example:
+              name: "每日冥想 10 分鐘"
+      responses:
+        '201':
+          description: Habit created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habit'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /habits/{habitId}:
+    get:
+      tags:
+        - Habits
+      summary: Get a specific habit by ID
+      operationId: getHabitById
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: habitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: A single habit.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Habit'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+    delete:
+      tags:
+        - Habits
+      summary: Delete a habit
+      operationId: deleteHabit
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: habitId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Habit deleted successfully.
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '404':
+          $ref: '#/components/responses/NotFoundError'
+
+  /mood-logs:
+    get:
+      tags:
+        - Moods
+      summary: List user's mood logs for a date range
+      operationId: listMoodLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          schema:
+            type: string
+            format: date
+          example: '2026-01-01'
+        - name: end_date
+          in: query
+          schema:
+            type: string
+            format: date
+          example: '2026-01-31'
+      responses:
+        '200':
+          description: A list of mood logs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MoodLog'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags:
+        - Moods
+      summary: Create or update a mood log for a specific date
+      operationId: createOrUpdateMoodLog
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoodLogInput'
+            example:
+              log_date: '2026-01-28'
+              mood_score: 5
+      responses:
+        '201':
+          description: Mood log created or updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MoodLog'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /habit-logs:
+    get:
+      tags:
+        - Habit Logs
+      summary: List all habit logs for a user within a date range
+      operationId: listAllHabitLogs
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: start_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: '2026-01-01'
+        - name: end_date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          example: '2026-01-31'
+      responses:
+        '200':
+          description: A list of habit logs.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HabitLog'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+    post:
+      tags:
+        - Habit Logs
+      summary: Create or update a habit log for a specific habit and date
+      operationId: createOrUpdateHabitLog
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HabitLogInput'
+            example:
+              habit_id: 1
+              log_date: '2026-01-28'
+              completed: true
+      responses:
+        '201':
+          description: Habit log created or updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HabitLog'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        email:
+          type: string
+          format: email
+          example: "dev.user@example.com"
+        created_at:
+          type: string
+          format: date-time
+
+    UserCredentials:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthToken:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+    Habit:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: "晨間運動 30 分鐘"
+        created_at:
+          type: string
+          format: date-time
+
+    HabitInput:
+      type: object
+      properties:
+        name:
+          type: string
+
+    MoodLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        mood_score:
+          type: integer
+          minimum: 1
+          maximum: 5
+        log_date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+
+    MoodLogInput:
+      type: object
+      properties:
+        log_date:
+          type: string
+          format: date
+        mood_score:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    HabitLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        habit_id:
+          type: integer
+        log_date:
+          type: string
+          format: date
+        completed:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    HabitLogInput:
+      type: object
+      properties:
+        habit_id:
+          type: integer
+        log_date:
+          type: string
+          format: date
+        completed:
+          type: boolean
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "NOT_FOUND"
+        message:
+          type: string
+          example: "The requested resource was not found."
+
+  responses:
+    UnauthorizedError:
+      description: Authentication information is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "UNAUTHORIZED"
+            message: "Authentication token is required."
+    NotFoundError:
+      description: The specified resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "NOT_FOUND"
+            message: "The resource with ID 123 was not found."
+    ValidationError:
+      description: The request body is invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: "VALIDATION_ERROR"
+            message: "Field 'email' must be a valid email address."
+
+  parameters:
+    QueryLimit:
+      name: limit
+      in: query
+      description: Maximum number of items to return.
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+    QueryOffset:
+      name: offset
+      in: query
+      description: Number of items to skip for pagination.
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
